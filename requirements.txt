@@ -1,0 +1,4 @@
+openvino-dev==2021.4.2
+tensorflow==2.7.0
+tf_slim==1.1.0
+tqdm>=4.62
