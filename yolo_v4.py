@@ -2,7 +2,7 @@
 import numpy as np
 import tensorflow as tf
 
-slim = tf.contrib.slim
+import tf_slim as slim
 
 _BATCH_NORM_DECAY = 0.9
 _BATCH_NORM_EPSILON = 1e-05
@@ -11,7 +11,8 @@ _LEAKY_RELU = 0.1
 _ANCHORS = [(12, 16), (19, 36), (40, 28),
             (36, 75), (76, 55), (72, 146),
             (142, 110), (192, 243), (459, 401)]
-@tf.contrib.framework.add_arg_scope
+
+@slim.add_arg_scope
 def _fixed_padding(inputs, kernel_size, *args, mode='CONSTANT', **kwargs):
     """
     Pads the input along the spatial dimensions independently of input size.
@@ -33,12 +34,12 @@ def _fixed_padding(inputs, kernel_size, *args, mode='CONSTANT', **kwargs):
     pad_end = pad_total - pad_beg
 
     if kwargs['data_format'] == 'NCHW':
-        padded_inputs = tf.pad(inputs, [[0, 0], [0, 0],
+        padded_inputs = tf.pad(tensor=inputs, paddings=[[0, 0], [0, 0],
                                         [pad_beg, pad_end],
                                         [pad_beg, pad_end]],
                                mode=mode)
     else:
-        padded_inputs = tf.pad(inputs, [[0, 0], [pad_beg, pad_end],
+        padded_inputs = tf.pad(tensor=inputs, paddings=[[0, 0], [pad_beg, pad_end],
                                         [pad_beg, pad_end], [0, 0]], mode=mode)
     return padded_inputs
 
@@ -99,7 +100,7 @@ def _spp_block(inputs, data_format='NCHW'):
 def _upsample(inputs, out_shape, data_format='NCHW'):
     # tf.image.resize_nearest_neighbor accepts input in format NHWC
     if data_format == 'NCHW':
-        inputs = tf.transpose(inputs, [0, 2, 3, 1])
+        inputs = tf.transpose(a=inputs, perm=[0, 2, 3, 1])
 
     if data_format == 'NCHW':
         new_height = out_shape[2]
@@ -108,11 +109,11 @@ def _upsample(inputs, out_shape, data_format='NCHW'):
         new_height = out_shape[1]
         new_width = out_shape[2]
 
-    inputs = tf.image.resize_nearest_neighbor(inputs, (new_height, new_width))
+    inputs = tf.image.resize(inputs, (new_height, new_width), method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
     # back to NCHW if needed
     if data_format == 'NCHW':
-        inputs = tf.transpose(inputs, [0, 3, 1, 2])
+        inputs = tf.transpose(a=inputs, perm=[0, 3, 1, 2])
 
     inputs = tf.identity(inputs, name='upsampled')
     return inputs
@@ -192,7 +193,7 @@ def _detection_layer(inputs, num_classes, anchors, img_size, data_format):
     predictions = slim.conv2d(inputs, num_anchors * (5 + num_classes), 1,
                               stride=1, normalizer_fn=None,
                               activation_fn=None,
-                              biases_initializer=tf.zeros_initializer())
+                              biases_initializer=tf.compat.v1.zeros_initializer())
 
     shape = predictions.get_shape().as_list()
     grid_size = _get_size(shape, data_format)
@@ -202,7 +203,7 @@ def _detection_layer(inputs, num_classes, anchors, img_size, data_format):
     if data_format == 'NCHW':
         predictions = tf.reshape(
             predictions, [-1, num_anchors * bbox_attrs, dim])
-        predictions = tf.transpose(predictions, [0, 2, 1])
+        predictions = tf.transpose(a=predictions, perm=[0, 2, 1])
 
     predictions = tf.reshape(predictions, [-1, num_anchors * dim, bbox_attrs])
 
@@ -261,7 +262,7 @@ def yolo_v4(inputs, num_classes, is_training=False, data_format='NCHW', reuse=Fa
 
     # transpose the inputs to NCHW
     if data_format == 'NCHW':
-        inputs = tf.transpose(inputs, [0, 3, 1, 2])
+        inputs = tf.transpose(a=inputs, perm=[0, 3, 1, 2])
 
     # normalize values to range [0..1]
     inputs = inputs / 255
@@ -280,14 +281,14 @@ def yolo_v4(inputs, num_classes, is_training=False, data_format='NCHW', reuse=Fa
 
             #weights_regularizer=slim.l2_regularizer(weight_decay)
             #weights_initializer=tf.truncated_normal_initializer(0.0, 0.01)
-        with tf.variable_scope('cspdarknet-53'):
+        with tf.compat.v1.variable_scope('cspdarknet-53'):
             route_1, route_2, route_3 = csp_darknet53(inputs,data_format,batch_norm_params)
 
         with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm,
                             normalizer_params=batch_norm_params,
                             biases_initializer=None,
                             activation_fn=lambda x: tf.nn.leaky_relu(x, alpha=_LEAKY_RELU)):
-            with tf.variable_scope('yolo-v4'):
+            with tf.compat.v1.variable_scope('yolo-v4'):
                 #features of y1
                 net = _conv2d_fixed_padding(route_1,256,kernel_size=3)
                 detect_1 = _detection_layer(

@@ -5,7 +5,7 @@ import tensorflow as tf
 from yolo_v4 import _conv2d_fixed_padding, _fixed_padding, _get_size, \
     _detection_layer, _upsample
 
-slim = tf.contrib.slim
+import tf_slim as slim
 
 _BATCH_NORM_DECAY = 0.9
 _BATCH_NORM_EPSILON = 1e-05
@@ -51,7 +51,7 @@ def yolo_v4_tiny(inputs, num_classes, is_training=False, data_format='NCHW', reu
 
     # transpose the inputs to NCHW
     if data_format == 'NCHW':
-        inputs = tf.transpose(inputs, [0, 3, 1, 2])
+        inputs = tf.transpose(a=inputs, perm=[0, 3, 1, 2])
 
     # normalize values to range [0..1]
     inputs = inputs / 255
@@ -74,7 +74,7 @@ def yolo_v4_tiny(inputs, num_classes, is_training=False, data_format='NCHW', reu
                                 biases_initializer=None,
                                 activation_fn=lambda x: tf.nn.leaky_relu(x, alpha=_LEAKY_RELU)):
 
-                with tf.variable_scope('yolo-v4-tiny'):
+                with tf.compat.v1.variable_scope('yolo-v4-tiny'):
                     #CSPDARKENT BEGIN
                     net = _conv2d_fixed_padding(inputs,32,kernel_size=3,strides=2)
 

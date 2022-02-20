@@ -8,17 +8,17 @@ from PIL import ImageDraw, Image
 def get_boxes_and_inputs_pb(frozen_graph):
 
     with frozen_graph.as_default():
-        boxes = tf.get_default_graph().get_tensor_by_name("output_boxes:0")
-        inputs = tf.get_default_graph().get_tensor_by_name("inputs:0")
+        boxes = tf.compat.v1.get_default_graph().get_tensor_by_name("output_boxes:0")
+        inputs = tf.compat.v1.get_default_graph().get_tensor_by_name("inputs:0")
 
     return boxes, inputs
 
 
 def get_boxes_and_inputs(model, num_classes, size, data_format):
 
-    inputs = tf.placeholder(tf.float32, [1, size, size, 3])
+    inputs = tf.compat.v1.placeholder(tf.float32, [1, size, size, 3])
 
-    with tf.variable_scope('detector'):
+    with tf.compat.v1.variable_scope('detector'):
         detections = model(inputs, num_classes,
                            data_format=data_format)
 
@@ -29,8 +29,8 @@ def get_boxes_and_inputs(model, num_classes, size, data_format):
 
 def load_graph(frozen_graph_filename):
 
-    with tf.gfile.GFile(frozen_graph_filename, "rb") as f:
-        graph_def = tf.GraphDef()
+    with tf.io.gfile.GFile(frozen_graph_filename, "rb") as f:
+        graph_def = tf.compat.v1.GraphDef()
         graph_def.ParseFromString(f.read())
 
     with tf.Graph().as_default() as graph:
@@ -47,13 +47,13 @@ def freeze_graph(sess, output_graph):
     ]
     output_node_names = ",".join(output_node_names)
 
-    output_graph_def = tf.graph_util.convert_variables_to_constants(
+    output_graph_def = tf.compat.v1.graph_util.convert_variables_to_constants(
         sess,
-        tf.get_default_graph().as_graph_def(),
+        tf.compat.v1.get_default_graph().as_graph_def(),
         output_node_names.split(",")
     )
 
-    with tf.gfile.GFile(output_graph, "wb") as f:
+    with tf.io.gfile.GFile(output_graph, "wb") as f:
         f.write(output_graph_def.SerializeToString())
 
     print("{} ops written to {}.".format(len(output_graph_def.node), output_graph))
@@ -90,7 +90,7 @@ def load_weights(var_list, weights_file):
                     var_weights = weights[ptr:ptr + num_params].reshape(shape)
                     ptr += num_params
                     assign_ops.append(
-                        tf.assign(var, var_weights, validate_shape=True))
+                        tf.compat.v1.assign(var, var_weights, validate_shape=True))
 
                 # we move the pointer by 4, because we loaded 4 variables
                 i += 4
@@ -103,7 +103,7 @@ def load_weights(var_list, weights_file):
                                        bias_params].reshape(bias_shape)
                 ptr += bias_params
                 assign_ops.append(
-                    tf.assign(bias, bias_weights, validate_shape=True))
+                    tf.compat.v1.assign(bias, bias_weights, validate_shape=True))
 
                 # we loaded 1 variable
                 i += 1
@@ -117,7 +117,7 @@ def load_weights(var_list, weights_file):
             var_weights = np.transpose(var_weights, (2, 3, 1, 0))
             ptr += num_params
             assign_ops.append(
-                tf.assign(var1, var_weights, validate_shape=True))
+                tf.compat.v1.assign(var1, var_weights, validate_shape=True))
             i += 1
 
     return assign_ops
