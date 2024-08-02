@@ -6,7 +6,6 @@ tf.compat.v1.disable_eager_execution()
 
 import yolo_v4
 import yolo_v4_tiny
-from PIL import Image, ImageDraw
 
 from utils import load_weights, load_coco_names, detections_boxes, freeze_graph
 
